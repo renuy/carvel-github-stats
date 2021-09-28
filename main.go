@@ -14,9 +14,10 @@ import (
 
 const (
 	GithubOrg   = "vmware-tanzu"
-	CarvelTopic = "carvel"
+	kappName = "carvel-kapp"
 	PivotalBot  = "pivotal-issuemaster"
 	VMwareBot   = "vmwclabot"
+	DependaBot ="dependabot[bot]"
 )
 
 func main() {
@@ -73,10 +74,8 @@ func main() {
 	// get carvel projects from org
 	carvelRepos := []*github.Repository{}
 	for _, repo := range repos {
-		for _, topic := range repo.Topics {
-			if topic == CarvelTopic {
+			if *repo.Name == kappName {
 				carvelRepos = append(carvelRepos, repo)
-			}
 		}
 	}
 
@@ -87,7 +86,7 @@ func main() {
 			State:       "all",
 			Sort:        "created",
 			Direction:   "asc",
-			ListOptions: github.ListOptions{PerPage: 1000},
+			ListOptions: github.ListOptions{PerPage: 10000},
 		}
 		repoPRs, _, err := client.PullRequests.List(context.Background(), GithubOrg, *carvelRepo.Name, opt)
 		if err != nil {
@@ -154,7 +153,7 @@ func main() {
 	})
 
 	for i, prInfo := range pullRequestInfos {
-		fmt.Printf("%v. %v #%v: %v\n", i, *prInfo.Repo.Name, *prInfo.PR.Number, prInfo.TimeToEngagement)
+		fmt.Printf("%v. %v #%v: %v    %v\n", i+1, *prInfo.Repo.Name, *prInfo.PR.Number, prInfo.TimeToEngagement, *prInfo.PR.User.Login)
 	}
 
 	fmt.Println("# of PRs: ", len(pullRequestInfos))
@@ -189,7 +188,8 @@ func filterPRsByWindow(prs []*github.PullRequest, begin, end time.Time) []*githu
 //  find time of first comment not from vmwclabot or pivotal-issuemaster or requester
 func findTimeOfFirstCommentNotFromUser(comments []*github.IssueComment, user string) time.Time {
 	for _, comment := range comments {
-		if *comment.User.Login == user || *comment.User.Login == PivotalBot || *comment.User.Login == VMwareBot {
+		if *comment.User.Login == user || *comment.User.Login == PivotalBot || *comment.User.Login == VMwareBot ||
+			*comment.User.Login == DependaBot {
 			continue
 		}
 		return *comment.CreatedAt
